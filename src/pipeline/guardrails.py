@@ -1,0 +1,1 @@
+"""Hard-stop guardrail conditions."""

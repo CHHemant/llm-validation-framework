@@ -1,0 +1,3 @@
+# Evaluation outputs
+evaluation/results/*
+!evaluation/results/.gitkeep
