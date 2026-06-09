@@ -15,7 +15,10 @@ from src.pipeline.rag_validator import RAGValidator
 
 def _load_queries(dataset_path: Path, limit: int = 50) -> list[str]:
     if dataset_path.exists():
-        data = json.loads(dataset_path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(dataset_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in dataset file: {dataset_path}") from exc
         if isinstance(data, dict) and "data" in data:
             data = data["data"]
         queries = [item.get("query") or item.get("question") for item in data if isinstance(item, dict)]

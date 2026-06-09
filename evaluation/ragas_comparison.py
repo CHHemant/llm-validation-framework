@@ -13,7 +13,10 @@ from src.pipeline.rag_validator import RAGValidator
 
 def _load_test_pairs(dataset_path: Path, limit: int = 500) -> list[dict]:
     if dataset_path.exists():
-        data = json.loads(dataset_path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(dataset_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in dataset file: {dataset_path}") from exc
         if isinstance(data, dict) and "data" in data:
             data = data["data"]
         if not isinstance(data, list):

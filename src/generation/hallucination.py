@@ -9,13 +9,18 @@ from typing import Any
 
 
 DEFAULT_NLI_MODEL = "cross-encoder/nli-deberta-v3-base"
+ALLOWED_NLI_MODELS = {DEFAULT_NLI_MODEL}
+MAX_SENTENCES = 12  # caps per-answer sentence scoring for stable latency
+MAX_CHUNKS = 12  # caps chunk comparisons to bound model calls
+MAX_CHUNK_CHARS = 1200  # keeps chunk inputs within reasonable token budget
 
 
 class NLIFaithfulnessScorer:
     """Sentence-to-chunk entailment scoring using a HuggingFace NLI cross-encoder."""
 
     def __init__(self, model_name: str | None = None):
-        self.model_name = model_name or os.getenv("NLI_MODEL", DEFAULT_NLI_MODEL)
+        env_model = model_name or os.getenv("NLI_MODEL", DEFAULT_NLI_MODEL)
+        self.model_name = env_model if env_model in ALLOWED_NLI_MODELS else DEFAULT_NLI_MODEL
         self._pipeline = None
 
     def _load_pipeline(self):
@@ -73,12 +78,12 @@ class NLIFaithfulnessScorer:
         if not chunks:
             return 0.0
 
-        limited_chunks = chunks[:12]
+        limited_chunks = chunks[:MAX_CHUNKS]
         sentence_scores = []
-        for sentence in sentences[:12]:
+        for sentence in sentences[:MAX_SENTENCES]:
             best = 0.0
             for chunk in limited_chunks:
-                best = max(best, self.entailment_probability(sentence, chunk[:1200]))
+                best = max(best, self.entailment_probability(sentence, chunk[:MAX_CHUNK_CHARS]))
             sentence_scores.append(best)
 
         return sum(sentence_scores) / len(sentence_scores)
