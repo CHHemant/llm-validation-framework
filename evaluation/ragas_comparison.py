@@ -80,7 +80,14 @@ def _run_ragas_metrics(samples: list[dict]) -> tuple[dict[str, float], str]:
             }
         )
         result = evaluate(ds, metrics=[faithfulness, answer_relevancy, context_recall])
-        score_dict = result if isinstance(result, dict) else getattr(result, "_scores_dict", None) or result.to_pandas().mean().to_dict()
+
+        if isinstance(result, dict):
+            score_dict = result
+        elif hasattr(result, "to_pandas"):
+            score_dict = result.to_pandas().mean().to_dict()
+        else:
+            raise TypeError("Unsupported RAGAS evaluation result format")
+
         return (
             {
                 "faithfulness": round(float(score_dict["faithfulness"]), 4),
