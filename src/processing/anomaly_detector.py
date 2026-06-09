@@ -37,7 +37,8 @@ def detect_anomalies(text: str, historical_scores: list[float] | None = None) ->
             statistical = True
             reasons.append("Response length-derived score is an outlier")
 
-    repeated_tokens = re.findall(r"\b(\w+)\b(?:\s+\1\b){2,}", text.lower())
+    # Two consecutive repeats are enough to flag noisy low-quality generations.
+    repeated_tokens = re.findall(r"\b(\w+)\b(?:\s+\1\b){1,}", text.lower())
     semantic = len(repeated_tokens) > 0
     if semantic:
         reasons.append("Detected suspicious repeated-token patterns")

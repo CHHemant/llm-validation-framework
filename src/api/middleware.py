@@ -6,7 +6,7 @@ import os
 import time
 from collections import deque
 
-from fastapi import Request, status
+from fastapi import HTTPException, Request, status
 from starlette.responses import JSONResponse
 
 

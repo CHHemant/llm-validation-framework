@@ -22,20 +22,27 @@ class NLIFaithfulnessScorer:
         env_model = model_name or os.getenv("NLI_MODEL", DEFAULT_NLI_MODEL)
         self.model_name = env_model if env_model in ALLOWED_NLI_MODELS else DEFAULT_NLI_MODEL
         self._pipeline = None
+        self._pipeline_failed = False
 
     def _load_pipeline(self):
         if self._pipeline is not None:
             return self._pipeline
+        if self._pipeline_failed:
+            raise RuntimeError("NLI pipeline unavailable")
         from transformers import pipeline
 
-        self._pipeline = pipeline(
-            "text-classification",
-            model=self.model_name,
-            tokenizer=self.model_name,
-            truncation=True,
-            return_all_scores=True,
-        )
-        return self._pipeline
+        try:
+            self._pipeline = pipeline(
+                "text-classification",
+                model=self.model_name,
+                tokenizer=self.model_name,
+                truncation=True,
+                return_all_scores=True,
+            )
+            return self._pipeline
+        except Exception:
+            self._pipeline_failed = True
+            raise
 
     @staticmethod
     def _extract_entailment_score(raw_output: Any) -> float:

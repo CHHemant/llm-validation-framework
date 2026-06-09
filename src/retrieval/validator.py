@@ -7,7 +7,7 @@ import re
 from collections import Counter
 
 
-_TOKEN_PATTERN = re.compile(r"\b\w{3,}\b")
+_TOKEN_PATTERN = re.compile(r"\b\w{4,}\b")
 
 
 def _tokenize(text: str) -> list[str]:
