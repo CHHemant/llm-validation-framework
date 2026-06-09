@@ -18,12 +18,11 @@ Usage:
 
 from __future__ import annotations
 import asyncio
-import hashlib
-import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any
+
+from src.generation.hallucination import score_faithfulness
 
 
 @dataclass
@@ -38,8 +37,8 @@ class ValidationResult:
 
     # thresholds — adjust based on your use case
     FAITHFULNESS_MIN = 0.72
-    CONSISTENCY_MIN  = 0.85
-    ATTRIBUTION_MIN  = 0.60
+    CONSISTENCY_MIN = 0.85
+    ATTRIBUTION_MIN = 0.60
 
 
 class RAGValidator:
@@ -58,7 +57,6 @@ class RAGValidator:
         """
         self._llm = llm_client
         self._consistency_runs = consistency_runs
-        self._cache: dict[str, str] = {}   # simple in-memory cache
 
     # ── Main entry ─────────────────────────────────────────────────────────────
 
@@ -129,10 +127,10 @@ class RAGValidator:
     async def _check_faithfulness(self, answer: str, context: str) -> float:
         """
         Does the answer only use information from the retrieved context?
-        Uses LLM to score 0-1. Falls back to lexical overlap if no LLM.
+        Uses LLM to score 0-1. Falls back to NLI+lexical method if LLM fails.
         """
         if self._llm is None:
-            return self._lexical_faithfulness(answer, context)
+            return score_faithfulness(answer, context)
 
         prompt = f"""Score how faithful this answer is to the given context.
 Faithfulness means: every factual claim in the answer is supported by the context.
@@ -149,17 +147,19 @@ Respond with ONLY a number between 0.0 and 1.0. Nothing else."""
 
         try:
             response = await self._llm(prompt)
-            score = float(re.search(r"0?\.\d+|[01]\.0*", response.strip()).group())
+            match = re.search(r"0?\.\d+|[01]\.0*", response.strip())
+            if not match:
+                return score_faithfulness(answer, context)
+            score = float(match.group())
             return max(0.0, min(1.0, score))
         except Exception:
-            # if LLM call fails, fall back to lexical
-            return self._lexical_faithfulness(answer, context)
+            return score_faithfulness(answer, context)
 
     @staticmethod
     def _lexical_faithfulness(answer: str, context: str) -> float:
         """
         Rough lexical faithfulness — what fraction of answer words appear in context?
-        Not great but works as a fallback when LLM is unavailable.
+        Not great but works as a fallback when model scoring is unavailable.
         """
         answer_words = set(re.findall(r"\b\w{4,}\b", answer.lower()))
         context_words = set(re.findall(r"\b\w{4,}\b", context.lower()))
